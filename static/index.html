@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speaker Diarization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e2e;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #28293e;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #4CAF50;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        input[type="file"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background-color: #1e1e2e;
+            color: #ffffff;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button#clearButton {
+            background-color: #888;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        .result pre {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            overflow: auto;
+        }
+        .spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #downloadButton {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speaker Diarization</h1>
+        <form id="diarization-form">
+            <label for="audioInput">Upload Audio File:</label>
+            <input type="file" id="audioInput" accept=".wav, .mp3" required>
+            
+            <label for="speakerNames">Enter Speaker Names (comma-separated):</label>
+            <input type="text" id="speakerNames" placeholder="Speaker 1, Speaker 2, etc." required>
+
+            <button type="button" id="submitButton">Submit</button>
+            <button type="button" id="clearButton">Clear</button>
+        </form>
+        <div class="spinner" id="loadingSpinner"></div>
+        <div class="result">
+            <h2>Transcription Result:</h2>
+            <pre id="resultText"></pre>
+        </div>
+        <button id="downloadButton">Download Result</button>
+    </div>
+    <script>
+        document.getElementById('submitButton').addEventListener('click', async () => {
+            const audioFile = document.getElementById('audioInput').files[0];
+            const speakerNames = document.getElementById('speakerNames').value;
+
+            if (!audioFile || !speakerNames) {
+                alert('Please upload an audio file and enter speaker names.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('audio_file', audioFile);
+            formData.append('speaker_names', speakerNames);
+
+            const spinner = document.getElementById('loadingSpinner');
+            const resultText = document.getElementById('resultText');
+            const downloadButton = document.getElementById('downloadButton');
+
+            spinner.style.display = 'block';
+            resultText.textContent = '';
+            downloadButton.style.display = 'none';
+
+            try {
+                const response = await fetch('/transcribe_diarize', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+
+                const result = await response.text();
+                resultText.textContent = result;
+
+                // Hide the spinner
+                spinner.style.display = 'none';
+
+                // Enable download button
+                downloadButton.style.display = 'block';
+                downloadButton.addEventListener('click', () => {
+                    const blob = new Blob([result], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'transcription_result.txt';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Check console for details.');
+                spinner.style.display = 'none';
+            }
+        });
+
+        document.getElementById('clearButton').addEventListener('click', () => {
+            document.getElementById('audioInput').value = '';
+            document.getElementById('speakerNames').value = '';
+            document.getElementById('resultText').textContent = '';
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('downloadButton').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
